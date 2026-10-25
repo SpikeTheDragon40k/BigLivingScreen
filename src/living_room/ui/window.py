@@ -364,27 +364,36 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         sw = w.get_ancestor(Gtk.ScrolledWindow)
         if sw is None:
             return True
+        # Measure against the scrolled content itself, not the Viewport that
+        # wraps it: the Viewport is the visible window, so positions relative
+        # to it shift with the scroll offset and can't be compared to `value`.
         content = sw.get_child()
+        if isinstance(content, Gtk.Viewport) and content.get_child() is not None:
+            content = content.get_child()
         ok, r = w.compute_bounds(content)
         if not ok or (r.size.width == 0 and r.size.height == 0):
             return False
+        if self._scroll_anim is not None:
+            self._scroll_anim.skip()  # finish any running scroll before measuring from it
+            self._scroll_anim = None
         adj = sw.get_vadjustment()
         margin = 60 * self.scale
         value, page = adj.get_value(), adj.get_page_size()
         top, bottom = r.origin.y - margin, r.origin.y + r.size.height + margin
-        if top < value:
-            target = max(adj.get_lower(), top)
+        if top < value or bottom - top > page:
+            target = top  # also aligns items taller than the view to their top
         elif bottom > value + page:
-            target = min(adj.get_upper() - page, bottom - page)
+            target = bottom - page
         else:
             return True
-        if self._scroll_anim is not None:
-            self._scroll_anim.skip()
+        target = max(adj.get_lower(), min(adj.get_upper() - page, target))
+        if abs(target - value) < 1:
+            return True
         if not self.config.get("animations"):
             adj.set_value(target)
             return True
         anim_target = Adw.CallbackAnimationTarget.new(lambda v: adj.set_value(v))
-        self._scroll_anim = Adw.TimedAnimation.new(sw, value, target, 220, anim_target)
+        self._scroll_anim = Adw.TimedAnimation.new(sw, value, target, 150, anim_target)
         self._scroll_anim.set_easing(Adw.Easing.EASE_OUT_CUBIC)
         self._scroll_anim.play()
         return True
