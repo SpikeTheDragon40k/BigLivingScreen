@@ -1,8 +1,15 @@
 name: Release
 
+# Runs when a v* tag is pushed, or manually from the Actions tab
+# ("Run workflow"), which creates the tag on the selected branch's latest commit.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to create, e.g. v1.0.0"
+        required: true
 
 permissions:
   contents: write
@@ -10,11 +17,17 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.version || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check tag format
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag must look like v1.2.3, got '$TAG'"; exit 1; }
       - name: Build source archive
-        run: git archive --format=tar.gz --prefix="living-room-${GITHUB_REF_NAME}/" -o "living-room-${GITHUB_REF_NAME}.tar.gz" HEAD
+        run: git archive --format=tar.gz --prefix="living-room-${TAG}/" -o "living-room-${TAG}.tar.gz" HEAD
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "living-room-${GITHUB_REF_NAME}.tar.gz" --generate-notes
+        # --target creates the tag on this commit when it does not exist yet.
+        run: gh release create "$TAG" "living-room-${TAG}.tar.gz" --target "$GITHUB_SHA" --title "Living Room ${TAG#v}" --generate-notes
