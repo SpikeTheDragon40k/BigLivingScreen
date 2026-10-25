@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Living Room
+GenericName=TV Launcher
+Comment=Controller-first fullscreen home screen for your TV
+Exec=@EXEC@
+Icon=io.github.spikethedragon40k.LivingRoom
+Terminal=false
+Categories=Utility;Game;
+Keywords=tv;launcher;bigscreen;gamepad;controller;couch;
+StartupNotify=true
+SingleMainWindow=true

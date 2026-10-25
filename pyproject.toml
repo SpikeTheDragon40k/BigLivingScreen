@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "living-room"
+version = "0.1.0"
+description = "A controller-first fullscreen application launcher for Ubuntu GNOME"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# PyGObject, GTK 4, libadwaita and PySDL2 come from Ubuntu packages
+# (python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, python3-sdl2); see README.
+dependencies = []
+
+[project.scripts]
+living-room = "living_room.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+living_room = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
