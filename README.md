@@ -40,7 +40,10 @@ display/HDMI settings, GPU drivers or kernel parameters.
   installed or removed.
 - Launching via Gio (`launch_uris_as_manager` / `launch_action`): field codes, quoting,
   DBus-activatable apps, Flatpak and desktop actions are handled by GLib. **No shell is ever used.**
-- Favorites: add/remove (Y), reorder (Options → Move, or Settings → Manage favorites), hide
+- Favorites: add with the **+ Add favorite** card at the end of the Favorites row (or Settings →
+  Manage favorites → + Add favorite), which opens a picker of every installed app; or highlight any
+  app and press Y, or X for its menu (Launch / Add to favorites / Hide / desktop actions).
+  Remove with Y or the same menu; reorder (Options → Move, or Settings → Manage favorites), hide
   unwanted apps, uninstalled favorites stay in place as dimmed cards until you remove them.
 - On-screen keyboard search (or just start typing on a keyboard).
 - Controller remapping, controller test screen, optional GNOME autostart with crash-loop

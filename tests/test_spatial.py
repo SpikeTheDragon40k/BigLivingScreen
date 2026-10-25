@@ -37,3 +37,10 @@ def test_header_buttons_reachable():
     cells["settings"] = Rect(500, 0, 60, 60)
     assert nav(cells, (2, 0), "up") == "settings"
     assert nav(cells, "settings", "down") == (2, 0)
+
+
+def test_right_at_row_end_does_not_jump_rows():
+    cells = grid(3, 2, y0=200)
+    cells["settings"] = Rect(500, 0, 60, 60)
+    assert nav(cells, (2, 0), "right") is None
+    assert nav(cells, (2, 1), "right") is None

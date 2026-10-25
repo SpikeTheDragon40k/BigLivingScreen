@@ -81,6 +81,9 @@ button.card.missing {{ opacity: 0.45; }}
 button.card.moving {{ border-color: #fbbf24; box-shadow: 0 0 0 {px(4)} alpha(#fbbf24, 0.4); }}
 .card-name {{ font-size: {px(21)}; font-weight: 600; }}
 button.card.small .card-name {{ font-size: {px(18)}; }}
+button.card.add-card {{ background: transparent; border: {px(3)} dashed alpha(#ffffff, 0.25); }}
+button.card.add-card:focus {{ border-style: solid; }}
+.add-plus {{ font-size: {px(96)}; font-weight: 300; color: alpha(#f2f4ff, 0.8); }}
 .card-star {{ color: #fbbf24; font-size: {px(22)}; }}
 
 button.tile {{ background: alpha(#ffffff, 0.07); border-radius: {px(16)};

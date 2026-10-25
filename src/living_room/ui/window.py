@@ -44,6 +44,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
             Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.scale = self._compute_scale()
         self._activated_at = 0.0
+        self._nav_serial = 0  # bumped on every user navigation
         self._scroll_anim = None
         self._toast_timer = 0
         self.history: list[Page] = []
@@ -176,7 +177,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         self.stack.set_visible_child(page)
         page.on_shown()
         self.update_hints()
-        GLib.idle_add(self._restore_focus, page)
+        GLib.idle_add(self._restore_focus, page, self._nav_serial)
 
     def push(self, page: Page) -> None:
         self._remember_focus()
@@ -187,7 +188,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         self.stack.set_visible_child(page)
         page.on_shown()
         self.update_hints()
-        GLib.idle_add(self._restore_focus, page)
+        GLib.idle_add(self._restore_focus, page, self._nav_serial)
 
     def pop(self) -> None:
         if len(self.history) <= 1:
@@ -199,7 +200,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         if page not in (self.home, self.search) and not isinstance(page, SettingsPage):
             GLib.timeout_add(400, self._remove_page, page)
         self.update_hints()
-        GLib.idle_add(self._restore_focus, self.current)
+        GLib.idle_add(self._restore_focus, self.current, self._nav_serial)
 
     def _remove_page(self, page: Page) -> bool:
         if page.get_parent() is self.stack and page not in self.history:
@@ -247,7 +248,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         self.scrim.set_visible(True)
         self.dialog_slot.set_visible(True)
         self.update_hints()
-        GLib.idle_add(self._restore_focus, dialog)
+        GLib.idle_add(self._restore_focus, dialog, self._nav_serial)
 
     def close_dialog(self, restore: bool = True) -> None:
         if self.dialog is None:
@@ -259,7 +260,7 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         self.dialog_slot.set_visible(False)
         self.update_hints()
         if restore:
-            GLib.idle_add(self._restore_focus, self.current)
+            GLib.idle_add(self._restore_focus, self.current, self._nav_serial)
 
     def _remember_focus(self) -> None:
         target = self.dialog or (self.history[-1] if self.history else None)
@@ -267,12 +268,11 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         if target is not None and focus is not None:
             target.last_focus = focus
 
-    def _restore_focus(self, page: Page) -> bool:
+    def _restore_focus(self, page: Page, serial: int | None = None) -> bool:
         if page is not (self.dialog or self.current):
             return GLib.SOURCE_REMOVE
-        focus = self.get_focus()
-        if focus is not None and focus.is_ancestor(page):
-            return GLib.SOURCE_REMOVE  # the user already moved within this page
+        if serial is not None and serial != self._nav_serial:
+            return GLib.SOURCE_REMOVE  # the user already navigated since this was scheduled
         w = page.last_focus
         if w is None or not self._in_scope(w):
             w = page.default_focus()
@@ -403,6 +403,8 @@ class LivingRoomWindow(Adw.ApplicationWindow):
         page = self.dialog or self.current
         if page.handle_action(action):
             return
+        if action in DIRECTIONS or action in (Action.PREV_SECTION, Action.NEXT_SECTION):
+            self._nav_serial += 1
         if action in DIRECTIONS:
             self.navigate(action)
         elif action == Action.ACTIVATE:

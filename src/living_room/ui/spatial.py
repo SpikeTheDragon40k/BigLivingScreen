@@ -69,6 +69,9 @@ def find_next(current: Rect, candidates: Iterable[tuple[Hashable, Rect]], direct
             centre = abs(r.cx - current.cx)
         else:
             return None
+        # Left/right stay within the current row; at a row end nothing happens.
+        if direction in ("left", "right") and ortho > 0:
+            continue
         # Weighted distance as used by Android TV focus search: the gap along
         # the travel axis dominates; aligned candidates (ortho == 0) win ties.
         score = 13 * primary * primary + centre * centre + (0 if ortho == 0 else 1)

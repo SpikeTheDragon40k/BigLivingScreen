@@ -44,9 +44,10 @@ def make_focusable(widget: Gtk.Widget) -> Gtk.Widget:
 
 class AppCard(Gtk.Button):
     def __init__(self, entry: AppEntry | None, app_id: str, big: bool, scale: float,
-                 favorite: bool = False):
+                 favorite: bool = False, on_activate: Callable[["AppCard"], None] | None = None):
         super().__init__()
         self.app_id = app_id
+        self.on_activate = on_activate
         self.entry = entry
         self.favorite = favorite
         make_focusable(self)
@@ -86,12 +87,36 @@ class AppCard(Gtk.Button):
         self.connect("clicked", self._on_clicked)
 
     def _on_clicked(self, *_):
+        if self.on_activate is not None:
+            self.on_activate(self)
+            return
         root = self.get_root()
         if hasattr(root, "launch"):
             if self.entry is None:
                 root.open_options(self.app_id)
             else:
                 root.launch(self.app_id)
+
+
+class AddCard(Gtk.Button):
+    """The "+ Add favorite" card shown at the end of the Favorites row."""
+
+    def __init__(self, scale: float, on_activate: Callable[[], None]):
+        super().__init__()
+        make_focusable(self)
+        self.add_css_class("card")
+        self.add_css_class("big")
+        self.add_css_class("add-card")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=int(14 * scale))
+        box.set_valign(Gtk.Align.CENTER)
+        plus = Gtk.Label(label="+")
+        plus.add_css_class("add-plus")
+        box.append(plus)
+        label = Gtk.Label(label="Add favorite")
+        label.add_css_class("card-name")
+        box.append(label)
+        self.set_child(box)
+        self.connect("clicked", lambda *_: on_activate())
 
 
 def _pretty_id(app_id: str) -> str:

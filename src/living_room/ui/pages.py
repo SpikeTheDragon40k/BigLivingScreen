@@ -13,7 +13,7 @@ from living_room.config.store import SCALE_STEPS
 from living_room.controllers.input import BINDABLE_ACTIONS, DIRECTIONS, Action
 from living_room.ui import style
 from living_room.ui.widgets import (
-    FOCUSABLE, AppCard, clear_box, flow_append, flowbox, make_focusable, section_label, tile,
+    FOCUSABLE, AddCard, AppCard, clear_box, flow_append, flowbox, make_focusable, section_label, tile,
 )
 
 if TYPE_CHECKING:
@@ -83,8 +83,8 @@ class HomePage(Page):
         content.add_css_class("lr-content")
         content.append(section_label("Favorites"))
         self.fav_flow = flowbox(2, 7)
-        self.fav_empty = Gtk.Label(label="No favorites yet — highlight any application and press "
-                                         "Favorite to pin it here.", xalign=0, wrap=True)
+        self.fav_empty = Gtk.Label(label="No favorites yet — choose Add favorite, or highlight any "
+                                         "application below and press Favorite.", xalign=0, wrap=True)
         self.fav_empty.add_css_class("lr-empty")
         content.append(self.fav_flow)
         content.append(self.fav_empty)
@@ -134,8 +134,12 @@ class HomePage(Page):
         favs = cfg.favorites
         for fid in favs:
             flow_append(self.fav_flow, AppCard(catalog.get(fid), fid, True, scale))
+        old_add = getattr(self, "add_card", None)
+        self.add_card = AddCard(scale, lambda: self.win.push(AddFavoritesPage(self.win)))
+        flow_append(self.fav_flow, self.add_card)
+        if old_add is not None and self.last_focus is old_add:
+            self.last_focus = self.add_card
         self.fav_empty.set_visible(not favs)
-        self.fav_flow.set_visible(bool(favs))
         if app_id:
             self._refocus(app_id, flow)
 
@@ -169,8 +173,7 @@ class HomePage(Page):
     def handle_action(self, action):
         if action == Action.HOME:
             self.scroller.get_vadjustment().set_value(0)
-            target = first_focusable(self.fav_flow) if self.fav_flow.get_visible() else None
-            target = target or first_focusable(self.all_flow)
+            target = first_focusable(self.fav_flow)
             if target:
                 self.win.focus_widget(target)
             return True
@@ -466,6 +469,8 @@ class FavoritesPage(ListPage):
     def build(self):
         clear_box(self.body)
         favs = self.win.config.favorites
+        self.body.append(tile("+  Add favorite", lambda: self.win.push(AddFavoritesPage(self.win)),
+                              description="Choose installed applications to pin to the home screen"))
         if not favs:
             empty = Gtk.Label(label="No favorites yet.", xalign=0)
             empty.add_css_class("lr-empty")
@@ -478,6 +483,11 @@ class FavoritesPage(ListPage):
             if self.moving == fid:
                 t.add_css_class("moving")
             self.body.append(t)
+
+    def on_shown(self):
+        # Coming back from the add page: show the new favorites.
+        if self.moving is None:
+            self.build()
 
     def _row(self, fid):
         for child in _children(self.body):
@@ -532,6 +542,60 @@ class FavoritesPage(ListPage):
             return True
         if action == Action.ACTIVATE:
             GLib.idle_add(self.win.update_hints)
+        return False
+
+
+class AddFavoritesPage(Page):
+    """Grid of every application that is not a favorite yet; selecting one adds it."""
+    title = "Add favorites"
+
+    def __init__(self, win):
+        super().__init__(win)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.add_css_class("lr-content")
+        heading = Gtk.Label(label="Add favorites", xalign=0)
+        heading.add_css_class("lr-page-title")
+        box.append(heading)
+        sub = Gtk.Label(label="Select applications to pin them to the home screen. Press Back when done.",
+                        xalign=0, wrap=True)
+        sub.add_css_class("lr-subtitle")
+        box.append(sub)
+        self.flow = flowbox(3, 10)
+        self.flow.set_margin_top(24)
+        box.append(self.flow)
+        self.empty = Gtk.Label(label="Every application is already a favorite.", xalign=0)
+        self.empty.add_css_class("lr-empty")
+        box.append(self.empty)
+        self.append(scrolled(box))
+        cfg = win.config
+        apps = [a for a in win.catalog.apps if not cfg.is_favorite(a.id)]
+        for entry in apps:
+            flow_append(self.flow, AppCard(entry, entry.id, False, win.scale, on_activate=self._add))
+        self.empty.set_visible(not apps)
+
+    def hints(self):
+        return [(Action.ACTIVATE, "Add to favorites"), (Action.BACK, "Done")]
+
+    def _add(self, card):
+        self.win.config.add_favorite(card.app_id)
+        self.win.toast(f"{card.entry.name} added to favorites")
+        child = card.get_parent()
+        index = child.get_index()
+        self.win.set_focus(None)
+        self.flow.remove(child)
+        nxt = self.flow.get_child_at_index(index) or self.flow.get_child_at_index(index - 1)
+        if nxt is not None:
+            self.win.focus_widget(nxt.get_child())
+        else:
+            self.empty.set_visible(True)
+
+    def handle_action(self, action):
+        # Favorite/Options act like Select here, so any button the user tries works.
+        if action in (Action.FAVORITE, Action.OPTIONS):
+            card = self.win.focused_card()
+            if card is not None:
+                self._add(card)
+            return True
         return False
 
 
